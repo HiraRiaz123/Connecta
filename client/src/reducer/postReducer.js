@@ -1,12 +1,11 @@
 const postReducer = (
-  state = { posts: [], loading: false, error: false, uploading: false },
+  state = { posts: null, loading: false, error: false, uploading: false },
   action
 ) => {
   switch (action.type) {
     case "UPLOAD_START":
-      return { ...state, uploading: true, error: false };
+      return { ...state, error: false, uploading: true };
     case "UPLOAD_SUCCESS":
-      // localStorage.setItem("post", JSON.stringify({ ...action?.data }));
       return {
         ...state,
         posts: [action.data, ...state.posts],
@@ -19,4 +18,5 @@ const postReducer = (
       return state;
   }
 };
+
 export default postReducer;

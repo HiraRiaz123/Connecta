@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react";
-import ProfileImage from "../../img/profileImg.jpg";
 import "./PostShare.css";
 import { UilScenery } from "@iconscout/react-unicons";
 import { UilPlayCircle } from "@iconscout/react-unicons";
@@ -11,21 +10,25 @@ import { uploadImage, uploadPost } from "../../actions/UploadAction";
 
 const PostShare = () => {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.authReducer.authData);
   const loading = useSelector((state) => state.postReducer.uploading)
   const [image, setImage] = useState(null);
   const imageRef = useRef();
-  const { user } = useSelector((state) => state.authReducer.authData);
   const description = useRef();
+  const serverPublic = process.env.REACT_APP_PUBLIC_FOLDER;
+
   const onImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       let img = e.target.files[0];
       setImage(img);
     }
   };
+
   const reset = () => {
     setImage(null);
     description.current.value = "";
   }
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const newPost = {
@@ -38,19 +41,19 @@ const PostShare = () => {
       data.append("name", fileName);
       data.append("file", image);
       newPost.image = fileName;
-      console.log(newPost);
       try {
         dispatch(uploadImage(data));
       } catch (err) {
         console.log(err);
       }
     }
+
     dispatch(uploadPost(newPost))
     reset();
   }
   return (
     <div className="PostShare">
-      <img src={ProfileImage} alt="" />
+      <img src={user.profilePicture ? serverPublic + user.profilePicture : serverPublic + "profileImg.jpg"} alt="ProfileImage" />
       <div>
         <input ref={description} type="text" placeholder="What's happening" />
         <div className="postOptions">
