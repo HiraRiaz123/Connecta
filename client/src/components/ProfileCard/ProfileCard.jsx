@@ -7,15 +7,12 @@ const ProfileCard = ({ location }) => {
   const { user } = useSelector((state) => state.authReducer.authData);
   const posts = useSelector((state) => state.postReducer.posts);
   const serverPublic = process.env.REACT_APP_PUBLIC_FOLDER;
+  console.log(user)
   return (
     <div className="ProfileCard">
       <div className="ProfileImages">
-        <img src={
-          user.coverPicture
-            ? serverPublic + user.coverPicture
-            : serverPublic + "cover.jpg"
-        } alt="CoverImage" />
-        <img src={user.profilePicture ? serverPublic + user.profilePicture : serverPublic + "profileImg.jpg"} alt="ProfileImage" />
+        <img src={user.coverPicture ? serverPublic + user.coverPicture : serverPublic + "cover.jpg"} alt="CoverImage" height="200" />
+        <img src={user.profilePicture ? serverPublic + user.profilePicture : serverPublic + "profileImg.jpg"} alt="ProfileImage" height="100" width="150" />
       </div>
       <div className="ProfileName">
         <span>{user.firstname} {user.lastname}</span>

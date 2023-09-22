@@ -16,6 +16,10 @@ const Posts = () => {
 
   if (!posts) return 'No Posts';
   if (params.id) posts = posts.filter((post) => post.userId === params.id)
+
+  posts = posts.filter((post) => {
+    return post.userId === user._id || user.following.includes(post.userId);
+  });
   return (
     <div className="Posts">
       {loading
