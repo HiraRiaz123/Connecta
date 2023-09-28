@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
-const UserSchema = mongoose.Schema(
+const { Schema } = mongoose;
+
+const UserSchema = new Schema(
   {
     firstName: {
       type: String,
@@ -24,35 +26,21 @@ const UserSchema = mongoose.Schema(
       required: true,
       minlength: 6,
     },
-    age: {
-      type: String,
-    },
-    phoneNumber: {
-      type: String,
-    },
-    address: {
-      type: String,
-    },
     gender: {
       type: String,
-      enum: ["MALE", "FEMALE"],
+      enum: ["MALE", "FEMALE", "OTHER"],
     },
-    status: {
-      type: String,
-      enum: ["ACTIVE", "INACTIVE"],
-    },
-    isAdmin: {
-      type: Boolean,
-      default: false,
-    },
-    profilePicture: String,
-    coverPicture: String,
-    livesIn: String,
-    worksAt: String,
-    relationship: String,
-    country: String,
-    followers: [],
-    following: [],
+    profilePicturePath: { type: String },
+    coverPicturePath: { type: String },
+    phoneNumber: { type: String, default: "" },
+    followers: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+    saved: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+    livesIn: { type: String, default: "" },
+    studyAt: { type: String, default: "" },
+    worksAt: { type: String, default: "" },
+    relationship: { type: String, default: "" },
+    country: { type: String, default: "" },
   },
   {
     timestamps: true,
@@ -60,5 +48,5 @@ const UserSchema = mongoose.Schema(
   }
 );
 
-const UserModel = mongoose.model("Users", UserSchema);
-export default UserModel;
+const User = mongoose.model("User", UserSchema, "users");
+export default User;

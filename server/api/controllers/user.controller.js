@@ -1,129 +1,323 @@
-import UserModel from "../models/user.model.js";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import Joi from "joi";
+import fs from "fs";
+import User from "../models/user.model.js";
+import UserDetailsDTO from "../dto/UserDetailsDTO.js";
+import { BACKEND_SERVER_PATH } from "../../dependencies/config.js";
 
-// get user
-export const getUser = async (req, res) => {
-  const id = req.params.id;
+const mongodbIdPattern = /^[0-9a-fA-F]{24}$/;
+
+export const getUser = async (req, res, next) => {
+  const getByIdSchema = Joi.object({
+    id: Joi.string().regex(mongodbIdPattern).required(),
+  });
+
+  const { error } = getByIdSchema.validate(req.params);
+  if (error) {
+    return next(error);
+  }
+
+  let user;
+  const { id } = req.params;
   try {
-    const user = await UserModel.findById(id);
-    if (user) {
-      const { password, ...otherDetails } = user._doc;
-      res.status(200).json(otherDetails);
+    user = await User.findById({ _id: id });
+    if (!user) {
+      const error = {
+        status: 404,
+        message: "User not found",
+      };
+      return next(error);
+    }
+  } catch (error) {
+    return next(error);
+  }
+
+  const userDto = new UserDetailsDTO(user);
+  return res.status(200).json({ user: userDto });
+};
+
+export const getAllUsers = async (req, res, next) => {
+  try {
+    let users = await User.find();
+    if (!users) {
+      const error = {
+        status: 404,
+        message: "Users not found",
+      };
+      return next(error);
     } else {
-      res.status(404).json("No such user exists");
+      const usersDto = users.map((user) => new UserDetailsDTO(user));
+      res.status(200).json({ users: usersDto });
     }
   } catch (error) {
-    res.status(500).json(error);
+    return next(error);
   }
 };
 
-// Get all users
-export const getAllUsers = async (req, res) => {
+export const updateUser = async (req, res, next) => {
+  const updateUserSchema = Joi.object({
+    userId: Joi.string().regex(mongodbIdPattern).required(),
+    firstName: Joi.string().min(3).max(30).required(),
+    lastName: Joi.string().max(30).required(),
+    gender: Joi.string().valid("MALE", "FEMALE", "OTHER").required(),
+    profilePicture: Joi.string(),
+    coverPicture: Joi.string(),
+    phoneNumber: Joi.string().regex(/^\d{10}$/),
+    livesIn: Joi.string(),
+    studyAt: Joi.string(),
+    worksAt: Joi.string(),
+    relationship: Joi.string(),
+    country: Joi.string(),
+  });
+
+  const { error } = updateUserSchema.validate(req.body);
+  if (error) {
+    return next(error);
+  }
+
+  const {
+    userId,
+    firstName,
+    lastName,
+    gender,
+    profilePicture,
+    coverPicture,
+    phoneNumber,
+    livesIn,
+    studyAt,
+    worksAt,
+    relationship,
+    country,
+  } = req.body;
+  let userToUpdate;
   try {
-    let users = await UserModel.find();
-    users = users.map((user) => {
-      const { password, ...otherDetails } = user._doc;
-      return otherDetails;
-    });
-    res.status(200).json(users);
+    userToUpdate = await User.findOne({ _id: userId });
+    if (!userToUpdate) {
+      const error = {
+        status: 404,
+        message: "User not found",
+      };
+      return next(error);
+    }
   } catch (error) {
-    res.status(500).json(error);
+    return next(error);
   }
-};
+  const updatedUserData = {
+    firstName,
+    lastName,
+    gender,
+    phoneNumber,
+    livesIn,
+    studyAt,
+    worksAt,
+    relationship,
+    country,
+  };
 
-// update user
-export const updateUser = async (req, res) => {
-  const id = req.params.id;
-  const { _id, password } = req.body;
-  if (id === _id) {
+  if (profilePicture) {
+    // let previousProfilePicture = userToUpdate.profilePicturePath;
+    // previousProfilePicture = previousProfilePicture.split("/").at(-1);
+    // fs.unlinkSync(`storage/${previousProfilePicture}`);
+    const buffer = Buffer.from(
+      profilePicture.replace(/^data:image\/(png|jpg|jpeg);base64,/, ""),
+      "base64"
+    );
+    const profilePath = `${Date.now()}-${userId}.png`;
+    let response;
     try {
-      if (password) {
-        const salt = await bcrypt.genSalt(10);
-        req.body.password = await bcrypt.hash(password, salt);
-      }
-      const user = await UserModel.findByIdAndUpdate(id, req.body, {
-        new: true,
-      });
-      const token = jwt.sign(
-        { email: user.email, id: user._id },
-        process.env.JWT_KEY,
-        { expiresIn: "1h" }
-      );
-      console.log({ user, token });
-      res.status(200).json({ user, token });
+      // response = await cloudinary.uploader.upload(profilePicture);
+      fs.writeFileSync(`storage/${profilePath}`, buffer);
     } catch (error) {
-      res.status(500).json(error);
+      return next(error);
     }
-  } else {
-    res.status(403).json("Access Denied! You can only update your own profile");
+    updatedUserData.profilePicturePath = `${BACKEND_SERVER_PATH}/storage/${profilePath}`;
+  }
+  if (coverPicture) {
+    // let previousProfilePicture = userToUpdate.profilePicturePath;
+    // previousProfilePicture = previousProfilePicture.split("/").at(-1);
+    // fs.unlinkSync(`storage/${previousProfilePicture}`);
+    const buffer = Buffer.from(
+      coverPicture.replace(/^data:image\/(png|jpg|jpeg);base64,/, ""),
+      "base64"
+    );
+    const coverPath = `${Date.now()}-${userId}.png`;
+    let response;
+    try {
+      // response = await cloudinary.uploader.upload(coverPicture);
+      fs.writeFileSync(`storage/${coverPath}`, buffer);
+    } catch (error) {
+      return next(error);
+    }
+    updatedUserData.coverPicturePath = `${BACKEND_SERVER_PATH}/storage/${coverPath}`;
+  }
+  try {
+    await User.updateOne({ _id: userId }, updatedUserData);
+    return res.status(200).json({ message: "User updated!" });
+  } catch (error) {
+    return next(error);
   }
 };
 
-// delete user
-export const deleteUser = async (req, res) => {
-  const id = req.params.id;
-  const userToDelete = await UserModel.findById(id);
+export const deleteUser = async (req, res, next) => {
+  const deleteUserSchema = Joi.object({
+    id: Joi.string().regex(mongodbIdPattern).required(),
+  });
 
+  const { error } = deleteUserSchema.validate(req.params);
+
+  if (error) {
+    return next(error);
+  }
+  const { id } = req.params;
+  const userToDelete = await User.findById(id);
   if (!userToDelete) {
-    res.status(403).json("User does not exist");
-    return;
+    const error = {
+      status: 404,
+      message: "User not found",
+    };
+    return next(error);
   }
-  const { currentUserId, currentUserAdminStatus } = req.body;
-  if (id === currentUserId || currentUserAdminStatus) {
-    try {
-      await UserModel.findByIdAndDelete(id);
-      res.status(200).json("User deleted successfully");
-    } catch (error) {
-      res.status(500).json(error);
-    }
-  } else {
-    res.status(403).json("Access Denied! You can only delete your own account");
+  try {
+    await User.findByIdAndDelete(id);
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    return next(error);
   }
 };
 
-// follow user
-export const followUser = async (req, res) => {
-  const id = req.params.id;
-  const { _id } = req.body;
-  if (_id === id) {
-    res.status(403).json("Action forbidden");
+
+export const followUser = async (req, res, next) => {
+  const followUserSchema = Joi.object({
+    id: Joi.string().regex(mongodbIdPattern).required(),
+  });
+
+  const { error } = followUserSchema.validate(req.params);
+
+  if (error) {
+    return next(error);
+  }
+  const { id } = req.params;
+  const { currentUserId } = req.body;
+  if (currentUserId === id) {
+    const error = {
+      status: 403,
+      message: "Action forbidden",
+    };
+    return next(error);
   } else {
     try {
-      const followUser = await UserModel.findById(id);
-      const followingUser = await UserModel.findById(_id);
-      if (!followUser.followers.includes(_id)) {
-        await followUser.updateOne({ $push: { followers: _id } });
+      const followUser = await User.findById(id);
+      const followingUser = await User.findById(currentUserId);
+      if (!followUser.followers.includes(currentUserId)) {
+        await followUser.updateOne({ $push: { followers: currentUserId } });
         await followingUser.updateOne({ $push: { following: id } });
-        res.status(200).json("User Followed!");
+        res.status(200).json({ message: "User Followed!" });
       } else {
-        res.status(403).json("User is already followed by you");
+        res.status(403).json({ message: "User is already followed by you" });
       }
     } catch (error) {
-      res.status(500).json(error);
+      return next(error);
     }
   }
 };
 
-// unFollow user
-export const unFollowUser = async (req, res) => {
-  const id = req.params.id;
-  const { _id } = req.body;
-  if (_id === id) {
-    res.status(403).json("Action forbidden");
+export const unFollowUser = async (req, res, next) => {
+  const followUserSchema = Joi.object({
+    id: Joi.string().regex(mongodbIdPattern).required(),
+  });
+
+  const { error } = followUserSchema.validate(req.params);
+
+  if (error) {
+    return next(error);
+  }
+  const { id } = req.params;
+  const { currentUserId } = req.body;
+  if (currentUserId === id) {
+    const error = {
+      status: 403,
+      message: "Action forbidden",
+    };
+    return next(error);
   } else {
     try {
-      const followUser = await UserModel.findById(id);
-      const followingUser = await UserModel.findById(_id);
-      if (followUser.followers.includes(_id)) {
-        await followUser.updateOne({ $pull: { followers: _id } });
+      const followUser = await User.findById(id);
+      const followingUser = await User.findById(currentUserId);
+      if (followUser.followers.includes(currentUserId)) {
+        await followUser.updateOne({ $pull: { followers: currentUserId } });
         await followingUser.updateOne({ $pull: { following: id } });
-        res.status(200).json("User Un-Followed!");
+        res.status(200).json({ message: "User Un-followed!" });
       } else {
-        res.status(403).json("User is nott followed by you");
+        res.status(403).json({ message: "User is not followed by you" });
       }
     } catch (error) {
-      res.status(500).json(error);
+      return next(error);
     }
+  }
+};
+
+export const searchUser = async (req, res, next) => {
+  let firstName = String(req.query.firstName);
+  let lastName = String(req.query.lastName);
+  try {
+    const users = await User.find({
+      $or: [
+        { firstName: { $regex: new RegExp(firstName, "i") } },
+        { lastName: { $regex: new RegExp(lastName, "i") } },
+      ],
+    }).limit(10);
+    console.log(users.length);
+    if (!users || users.length === 0) {
+      const error = {
+        status: 404,
+        message: "Users not found",
+      };
+      return next(error);
+    } else {
+      const usersDto = users.map((user) => new UserDetailsDTO(user));
+      res.status(200).json({ users: usersDto });
+    }
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const suggestionsUser = async (req, res, next) => {
+  const currentUser = req.user;
+  try {
+    const connectedUsers = await User.find({
+      $or: [{ followers: currentUser._id }, { following: currentUser._id }],
+    });
+
+    if (!connectedUsers || connectedUsers.length === 0) {
+      const error = {
+        status: 404,
+        message: "No connected users found",
+      };
+      return next(error);
+    }
+    const followersOfCurrentUser = connectedUsers.filter((user) =>
+      user.following.includes(currentUser._id)
+    );
+
+    const followersOfConnectedUsers = [];
+    const followingOfConnectedUsers = [];
+
+    for (const connectedUser of connectedUsers) {
+      const followers = await User.find({ following: connectedUser._id });
+      const following = await User.find({ followers: connectedUser._id });
+      followersOfConnectedUsers.push(followers);
+      followingOfConnectedUsers.push(following);
+    }
+    const suggestedUsers = [
+      ...followersOfCurrentUser,
+      ...followersOfConnectedUsers.flat(),
+      ...followingOfConnectedUsers.flat(),
+    ];
+    const suggestedUsersDto = suggestedUsers.map(
+      (user) => new UserDetailsDTO(user)
+    );
+    return res.status(200).json({ suggestedUsersDto });
+  } catch (error) {
+    return next(error);
   }
 };

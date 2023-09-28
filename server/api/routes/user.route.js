@@ -4,16 +4,23 @@ import {
   followUser,
   getAllUsers,
   getUser,
+  searchUser,
+  suggestionsUser,
   unFollowUser,
   updateUser,
 } from "../controllers/user.controller.js";
-import authMiddleWare from "../middlewares/auth.middleware.js";
-const router = express.Router();
-router.get("/getUser/:id", getUser);
-router.get("/getAllUsers", getAllUsers);
-router.put("/updateUser/:id", authMiddleWare, updateUser);
-router.delete("/deleteUser/:id", authMiddleWare, deleteUser);
-router.put("/followUser/:id", authMiddleWare, followUser);
-router.put("/unFollowUser/:id", authMiddleWare, unFollowUser);
 
-export default router;
+import auth from "../middlewares/auth.middleware.js";
+
+const userRouter = express.Router();
+
+userRouter.get("/getUser/:id", auth, getUser);
+userRouter.get("/getAllUsers", auth, getAllUsers);
+userRouter.put("/updateUser", auth, updateUser);
+userRouter.delete("/deleteUser/:id", auth, deleteUser);
+userRouter.put("/followUser/:id", auth, followUser);
+userRouter.put("/unFollowUser/:id", auth, unFollowUser);
+userRouter.get("/searchUser", auth, searchUser);
+userRouter.get("/suggestionsUser", auth, suggestionsUser);
+
+export default userRouter;

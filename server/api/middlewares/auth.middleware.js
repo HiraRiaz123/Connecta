@@ -1,21 +1,38 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import User from "../models/user.model.js";
+import JWTService from "../services/JWTService.js";
+import UserDTO from "../dto/UserDTO.js";
 
-dotenv.config();
-const secretKey = process.env.JWT_KEY;
-const authMiddleWare = async (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
-    const token = req.headers.authorization.split(" ")[1];
-    console.log(token);
-    if (token) {
-      const decoded = jwt.verify(token, secretKey);
-      console.log(decoded);
-      req.body._id = decoded?.id;
+    const { refreshToken, accessToken } = req.cookies;
+    if (!refreshToken || !accessToken) {
+      const error = {
+        status: 401,
+        message: "Unauthorized",
+      };
+      return next(error);
     }
+
+    let _id;
+    try {
+      _id = JWTService.verifyAccessToken(accessToken)._id;
+    } catch (error) {
+      return next(error);
+    }
+
+    let user;
+    try {
+      user = await User.findOne({ _id: _id });
+    } catch (error) {
+      return next(error);
+    }
+
+    const userDto = new UserDTO(user);
+    req.user = userDto;
     next();
   } catch (error) {
-    console.log(error);
+    return next(error);
   }
 };
 
-export default authMiddleWare;
+export default auth;

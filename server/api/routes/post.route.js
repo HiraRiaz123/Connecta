@@ -3,19 +3,24 @@ import {
   createPost,
   deletePost,
   getPost,
+  getSavedPosts,
   getTimeLinePosts,
   likePost,
-  sharePost,
+  savePost,
   updatePost,
 } from "../controllers/post.controller.js";
-const router = express.Router();
 
-router.post("/createPost", createPost);
-router.get("/getPost/:id", getPost);
-router.put("/updatePost/:id", updatePost);
-router.delete("/deletePost/:id", deletePost);
-router.put("/likePost/:id", likePost);
-router.get("/getTimeLinePosts/:id", getTimeLinePosts);
-router.post("/sharePost/:id", sharePost);
+import auth from "../middlewares/auth.middleware.js";
 
-export default router;
+const postRouter = express.Router();
+
+postRouter.post("/createPost", auth, createPost);
+postRouter.get("/getPost/:id", auth, getPost);
+postRouter.put("/updatePost", auth, updatePost);
+postRouter.delete("/deletePost/:id", auth, deletePost);
+postRouter.put("/likePost/:id", auth, likePost);
+postRouter.get("/getTimeLinePosts/:id", auth, getTimeLinePosts);
+postRouter.patch("/savePost/:id", auth, savePost);
+postRouter.get("/getSavedPosts", auth, getSavedPosts);
+
+export default postRouter;
