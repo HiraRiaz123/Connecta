@@ -114,35 +114,37 @@ export const updateUser = async (req, res, next) => {
   };
 
   if (profilePicture) {
-    // let previousProfilePicture = userToUpdate.profilePicturePath;
-    // previousProfilePicture = previousProfilePicture.split("/").at(-1);
-    // fs.unlinkSync(`storage/${previousProfilePicture}`);
+    if (userToUpdate.profilePicturePath) {
+      const previousProfilePicture = userToUpdate.profilePicturePath
+        .split("/")
+        .at(-1);
+      fs.unlinkSync(`storage/${previousProfilePicture}`);
+    }
     const buffer = Buffer.from(
       profilePicture.replace(/^data:image\/(png|jpg|jpeg);base64,/, ""),
       "base64"
     );
     const profilePath = `${Date.now()}-${userId}.png`;
-    let response;
     try {
-      // response = await cloudinary.uploader.upload(profilePicture);
       fs.writeFileSync(`storage/${profilePath}`, buffer);
+      updatedUserData.profilePicturePath = `${BACKEND_SERVER_PATH}/storage/${profilePath}`;
     } catch (error) {
       return next(error);
     }
-    updatedUserData.profilePicturePath = `${BACKEND_SERVER_PATH}/storage/${profilePath}`;
   }
   if (coverPicture) {
-    // let previousProfilePicture = userToUpdate.profilePicturePath;
-    // previousProfilePicture = previousProfilePicture.split("/").at(-1);
-    // fs.unlinkSync(`storage/${previousProfilePicture}`);
+    if (userToUpdate.coverPicturePath) {
+      const previousCoverPicture = userToUpdate.coverPicturePath
+        .split("/")
+        .at(-1);
+      fs.unlinkSync(`storage/${previousCoverPicture}`);
+    }
     const buffer = Buffer.from(
       coverPicture.replace(/^data:image\/(png|jpg|jpeg);base64,/, ""),
       "base64"
     );
     const coverPath = `${Date.now()}-${userId}.png`;
-    let response;
-    try {
-      // response = await cloudinary.uploader.upload(coverPicture);
+    try { 
       fs.writeFileSync(`storage/${coverPath}`, buffer);
     } catch (error) {
       return next(error);
@@ -183,7 +185,6 @@ export const deleteUser = async (req, res, next) => {
     return next(error);
   }
 };
-
 
 export const followUser = async (req, res, next) => {
   const followUserSchema = Joi.object({

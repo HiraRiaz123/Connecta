@@ -29,9 +29,7 @@ export const createPost = async (req, res, next) => {
     "base64"
   );
   const filePath = `${Date.now()}-${user}.png`;
-  let response;
   try {
-    // response = await cloudinary.uploader.upload(file);
     fs.writeFileSync(`storage/${filePath}`, buffer);
   } catch (error) {
     return next(error);

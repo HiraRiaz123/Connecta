@@ -41,6 +41,7 @@ const UserSchema = new Schema(
     worksAt: { type: String, default: "" },
     relationship: { type: String, default: "" },
     country: { type: String, default: "" },
+    notifications: { type: Array },
   },
   {
     timestamps: true,
